@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.*
+!.env.local.example
+*.log
+npm-debug.log*
+.DS_Store
+.vscode
+.idea
+LUKE-SETUP.md

@@ -9,4 +9,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      "/user_management": {
+        target: "https://api.workos.com",
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 });

@@ -60,6 +60,9 @@ function Root() {
         `${window.location.origin}/callback`
       }
       devMode={true} // Force localStorage tokens to avoid third-party cookie blocking in production
+      apiHostname={window.location.hostname}
+      https={window.location.protocol === "https:"}
+      port={window.location.port ? Number(window.location.port) : undefined}
       onRedirectCallback={onRedirectCallback}
     >
       <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
