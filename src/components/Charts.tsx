@@ -547,75 +547,6 @@ export function StackedBarChart({
   );
 }
 
-// Usage credit bar component
-interface UsageCreditBarProps {
-  included: number;
-  used: number;
-  onDemand: number;
-  theme?: "dark" | "tan";
-  className?: string;
-}
-
-export function UsageCreditBar({
-  included,
-  used,
-  onDemand,
-  theme = "dark",
-  className,
-}: UsageCreditBarProps) {
-  const isDark = theme === "dark";
-  const total = included + onDemand;
-  const includedPercent = total > 0 ? (Math.min(used, included) / total) * 100 : 0;
-  const onDemandPercent = total > 0 ? (onDemand / total) * 100 : 0;
-
-  return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center",
-            isDark ? "bg-blue-500/20" : "bg-[#EB5601]/20"
-          )}>
-            <svg className={cn("w-4 h-4", isDark ? "text-blue-400" : "text-[#EB5601]")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-          </div>
-          <div>
-            <p className={cn("text-xs", isDark ? "text-zinc-500" : "text-[#6b6b6b]")}>Included Credit</p>
-            <p className={cn("text-sm font-medium", isDark ? "text-zinc-200" : "text-[#1a1a1a]")}>
-              ${used.toFixed(2)} / ${included.toFixed(2)}
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className={cn("text-xs", isDark ? "text-zinc-500" : "text-[#6b6b6b]")}>On-Demand Charges</p>
-          <div className="flex items-center gap-2">
-            <p className={cn("text-sm font-medium", isDark ? "text-zinc-200" : "text-[#1a1a1a]")}>
-              ${onDemand.toFixed(2)}
-            </p>
-            <div className={cn(
-              "w-5 h-5 rounded-full flex items-center justify-center text-[10px]",
-              isDark ? "bg-zinc-700 text-zinc-300" : "bg-[#ebe9e6] text-[#6b6b6b]"
-            )}>
-              $
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className={cn("h-2 rounded-full overflow-hidden flex", isDark ? "bg-zinc-800" : "bg-[#e6e4e1]")}>
-        <div 
-          className={cn("h-full transition-all", isDark ? "bg-blue-500" : "bg-[#EB5601]")}
-          style={{ width: `${includedPercent}%` }}
-        />
-        <div 
-          className={cn("h-full transition-all", isDark ? "bg-purple-500" : "bg-[#8b7355]")}
-          style={{ width: `${onDemandPercent}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // Chart dropdown component for consistent styling
 interface ChartDropdownProps {
   value?: string | number;
@@ -991,12 +922,6 @@ export function ConsumptionBreakdown({
     { value: 90, label: "Last 90 days" },
   ];
 
-  // Calculate usage metrics using filtered summary
-  const includedCredit = 20.0;
-  const totalCost = filteredSummary?.totalCost || 0;
-  const usedCredit = Math.min(totalCost, includedCredit);
-  const onDemandCharges = Math.max(totalCost - includedCredit, 0);
-
   // Stats to display in table based on selection
   const tableStats = selectedProject ? filteredProjectStats : filteredModelStats;
 
@@ -1047,16 +972,6 @@ export function ConsumptionBreakdown({
             />
           </div>
         </div>
-      </div>
-
-      {/* Credit usage bar */}
-      <div className={cn("px-4 py-4 border-b", isDark ? "border-zinc-800/50" : "border-[#e6e4e1]")}>
-        <UsageCreditBar
-          included={includedCredit}
-          used={usedCredit}
-          onDemand={onDemandCharges}
-          theme={theme}
-        />
       </div>
 
       {/* Chart section */}
