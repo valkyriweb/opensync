@@ -145,6 +145,18 @@ launchctl print     gui/$(id -u)/com.luke.opensync-dashboard | grep -E 'state|pi
 
 ## Ingestion rollout plan
 
+**Status (2026-06-19): Phase 1 wired on the MacBook.** All three workstation harnesses sync:
+`pi` (pi-opensync-plugin fork, `source=pi:macbook`), Claude Code (claude-code-sync hooks
+hand-merged into `~/.claude/settings.json`), and Codex (codex-sync via launchd timer
+`com.luke.codex-sync` — *not* `codex-sync setup`, which would clobber Codex's Computer-Use
+`notify` slot). Grouping convention is **`source = harness:env`**; the `pi-opensync-plugin`
+fork makes `source` configurable (`PI_OPENSYNC_SOURCE`/`OPENSYNC_SOURCE`), and `codex-sync` /
+`claude-code-sync` get the same in Phase 2 (they hardcode it upstream). **Posture: metadata-only**
+— `syncToolCalls=false` + `syncThinking=false` on all three. Remaining: Mac Mini (offline at
+audit), and the lue-kube pods (openclaw/multica/paperclip/ClawSweeper) which need the redaction
+filter below before tool-call sync. Full fleet matrix: `~/Projects/agent-scripts/RUNTIMES.md`
+§ OpenSync session sync.
+
 ### Phase 1 — workstation session sync
 
 Install/configure only after local dashboard + API key works.
