@@ -139,14 +139,53 @@ All endpoints require authentication. Generate an API key in Settings.
 
 | Endpoint              | Description         |
 | --------------------- | ------------------- |
-| `POST /sync/session`  | Sync a session      |
-| `POST /sync/message`  | Sync a message      |
-| `GET /api/sessions`   | List sessions       |
-| `GET /api/search?q=`  | Search sessions     |
-| `GET /api/context?q=` | Get context for LLM |
-| `GET /api/export?id=` | Export session      |
+| `POST /sync/session`       | Sync a session                                  |
+| `POST /sync/message`       | Sync a message                                  |
+| `POST /sync/runtime-usage` | Sync sanitized runtime token/cache usage rows   |
+| `GET /api/runtime-usage`   | List or summarize runtime usage rows           |
+| `/runtime-usage`           | Authenticated runtime usage dashboard          |
+| `GET /api/sessions`        | List sessions                                   |
+| `GET /api/search?q=`       | Search sessions                                 |
+| `GET /api/context?q=`      | Get context for LLM                             |
+| `GET /api/export?id=`      | Export session                                  |
 
 [Full API reference](https://docs.opensync.dev/api/endpoints)
+
+## Runtime usage sync
+
+OpenSync accepts sanitized aggregate runtime usage rows at `POST /sync/runtime-usage`.
+Rows are also folded into daily aggregate records so `/runtime-usage` can render exact bounded dashboard totals without scanning raw history.
+Use the local poller for lightweight snapshots; it dry-runs unless both `OPENSYNC_URL` and `OPENSYNC_API_KEY` are set.
+
+```bash
+npm run sync:runtime-usage -- --source multica-runtime-usage --file /tmp/multica-runtime-usage.json --dry-run
+npm run sync:runtime-usage -- --source codexbar --file /tmp/codexbar.json --dry-run
+npm run sync:runtime-usage -- --source bridge-status --file /tmp/bridge-status.json --dry-run
+npm run sync:runtime-usage -- --source clawsweeper-status --file /tmp/clawsweeper-status.json --dry-run
+npm run sync:runtime-usage -- --source clawsweeper-runners --file /tmp/clawsweeper-runners.json --dry-run
+```
+
+Supported sources are aggregate/status-only: `records`, `multica-runtime-usage`, `provider-usage`, `codexbar`, `bridge-status`, `clawsweeper-status`, and `clawsweeper-runners`. Use `provider-usage --source-system paperclip --runtime-surface paperclip-cost` for Paperclip-style provider/model/token arrays. `clawsweeper-status` records deployed workflow-capacity telemetry; `clawsweeper-runners` is only for optional runner inventory snapshots and is not token-usage proof. Do not feed raw prompts, transcripts, auth headers, or GitHub installation tokens.
+
+For cron/launchd/GitHub Actions, use the batch runner with a checked config and secrets supplied by the runner environment:
+
+```bash
+OPENSYNC_URL=https://opensync.example.com OPENSYNC_API_KEY=osk_... npm run sync:runtime-usage:batch -- --config scripts/runtime-usage-sources.example.json
+```
+
+`.github/workflows/runtime-usage-sync.yml` is the checked GitHub Actions scaffold. It stays disabled on schedules until `OPENSYNC_RUNTIME_USAGE_ENABLED=1` is set, and non-dry-run dispatches require `OPENSYNC_URL` plus `OPENSYNC_API_KEY` secrets.
+
+Use the freshness check as the alert gate. It exits non-zero when an expected surface is missing or stale:
+
+```bash
+npm run check:runtime-usage:freshness -- --expected-surface codexbar-quota --expected-surface claude-bridge --expected-surface clawsweeper-status
+```
+
+Run the focused regression checks before changing adapters or dry-run output:
+
+```bash
+npm run test:runtime-usage
+```
 
 ## Tech stack
 

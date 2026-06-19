@@ -275,6 +275,14 @@ export function DashboardPage() {
         {/* Navigation links - hidden on mobile, icons only on tablet */}
         <div className="hidden md:flex items-center gap-3">
           <Link
+            to="/runtime-usage"
+            className={cn("flex items-center gap-1.5 text-xs transition-colors", t.textSubtle, "hover:opacity-80")}
+            title="Runtime usage"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Runtime</span>
+          </Link>
+          <Link
             to="/context"
             className={cn("flex items-center gap-1.5 text-xs transition-colors", t.textSubtle, "hover:opacity-80")}
             title="Search and context"

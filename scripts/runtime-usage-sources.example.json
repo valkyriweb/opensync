@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "name": "codexbar",
+      "source": "codexbar",
+      "command": ["codexbar", "usage", "--provider", "all", "--json"],
+      "optional": true
+    },
+    {
+      "name": "local-claude-bridge",
+      "source": "bridge-status",
+      "url": "http://127.0.0.1:9100/status",
+      "runtimeSurface": "claude-bridge",
+      "optional": true
+    },
+    {
+      "name": "clawsweeper-status",
+      "source": "clawsweeper-status",
+      "url": "https://clawsweeper.openclaw.ai/api/status"
+    }
+  ]
+}

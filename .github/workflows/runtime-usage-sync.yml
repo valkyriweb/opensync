@@ -1,0 +1,68 @@
+name: Runtime Usage Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run collectors without posting to OpenSync"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync runtime usage
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.OPENSYNC_RUNTIME_USAGE_ENABLED == '1' }}
+    env:
+      OPENSYNC_URL: ${{ secrets.OPENSYNC_URL }}
+      OPENSYNC_API_KEY: ${{ secrets.OPENSYNC_API_KEY }}
+      RUNTIME_USAGE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate activation
+        run: |
+          if [ "${RUNTIME_USAGE_DRY_RUN}" = "true" ]; then
+            echo "Dry-run mode: OpenSync secrets are optional."
+            exit 0
+          fi
+          if [ -z "${OPENSYNC_URL}" ]; then
+            echo "::error::Missing OPENSYNC_URL secret."
+            exit 1
+          fi
+          if [ -z "${OPENSYNC_API_KEY}" ]; then
+            echo "::error::Missing OPENSYNC_API_KEY secret."
+            exit 1
+          fi
+          echo "Runtime usage sync is enabled."
+
+      - name: Sync aggregate runtime usage
+        run: |
+          if [ "${RUNTIME_USAGE_DRY_RUN}" = "true" ]; then
+            npm run sync:runtime-usage:batch -- --config scripts/runtime-usage-sources.example.json --dry-run
+            exit 0
+          fi
+          npm run sync:runtime-usage:batch -- --config scripts/runtime-usage-sources.example.json
+
+      - name: Check freshness
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == 'false' }}
+        run: npm run check:runtime-usage:freshness -- --expected-surface clawsweeper-status --stale-after-minutes 180

@@ -199,6 +199,102 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
 
+  // Normalized model-token usage from runtimes and control planes.
+  runtimeUsage: defineTable({
+    userId: v.id("users"),
+    sourceKey: v.string(),
+    observedAt: v.number(),
+    sourceSystem: v.union(
+      v.literal("pi"),
+      v.literal("paperclip"),
+      v.literal("multica"),
+      v.literal("openclaw"),
+      v.literal("claude-code"),
+      v.literal("codex"),
+      v.literal("clawsweeper"),
+      v.literal("unknown"),
+    ),
+    runtimeSurface: v.string(),
+    runtimeId: v.optional(v.string()),
+    runtimeName: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    workspaceId: v.optional(v.string()),
+    projectId: v.optional(v.string()),
+    agentId: v.optional(v.string()),
+    agentName: v.optional(v.string()),
+    issueId: v.optional(v.string()),
+    issueKey: v.optional(v.string()),
+    taskKey: v.optional(v.string()),
+    runId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    cwd: v.optional(v.string()),
+    workflowName: v.optional(v.string()),
+    targetRepo: v.optional(v.string()),
+    runnerName: v.optional(v.string()),
+    providerReported: v.string(),
+    modelReported: v.string(),
+    quotaBucket: v.union(
+      v.literal("openai-codex"),
+      v.literal("anthropic"),
+      v.literal("google"),
+      v.literal("unknown"),
+    ),
+    billingType: v.optional(v.string()),
+    biller: v.optional(v.string()),
+    inputTokens: v.number(),
+    cachedInputTokens: v.number(),
+    cacheWriteTokens: v.number(),
+    outputTokens: v.number(),
+    costCents: v.optional(v.number()),
+    status: v.optional(v.string()),
+    sourceFreshness: v.union(
+      v.literal("fresh"),
+      v.literal("stale"),
+      v.literal("unknown"),
+    ),
+    ingestedAt: v.number(),
+  })
+    .index("by_user_source_key", ["userId", "sourceKey"])
+    .index("by_user_observed", ["userId", "observedAt"])
+    .index("by_user_quota_observed", ["userId", "quotaBucket", "observedAt"])
+    .index("by_user_source_observed", ["userId", "sourceSystem", "observedAt"])
+    .index("by_user_surface_observed", ["userId", "runtimeSurface", "observedAt"]),
+
+  // Daily aggregate rows for exact bounded runtime-usage dashboards.
+  runtimeUsageDaily: defineTable({
+    userId: v.id("users"),
+    aggregateKey: v.string(),
+    date: v.string(),
+    sourceSystem: v.union(
+      v.literal("pi"),
+      v.literal("paperclip"),
+      v.literal("multica"),
+      v.literal("openclaw"),
+      v.literal("claude-code"),
+      v.literal("codex"),
+      v.literal("clawsweeper"),
+      v.literal("unknown"),
+    ),
+    runtimeSurface: v.string(),
+    quotaBucket: v.union(
+      v.literal("openai-codex"),
+      v.literal("anthropic"),
+      v.literal("google"),
+      v.literal("unknown"),
+    ),
+    inputTokens: v.number(),
+    cachedInputTokens: v.number(),
+    cacheWriteTokens: v.number(),
+    outputTokens: v.number(),
+    totalTokens: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_key", ["userId", "aggregateKey"])
+    .index("by_user_date", ["userId", "date"])
+    .index("by_user_quota_date", ["userId", "quotaBucket", "date"])
+    .index("by_user_source_date", ["userId", "sourceSystem", "date"])
+    .index("by_user_surface_date", ["userId", "runtimeSurface", "date"]),
+
   // Daily Wrapped images - AI-generated visualization of 24h activity
   dailyWrapped: defineTable({
     userId: v.id("users"),

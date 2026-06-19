@@ -19,6 +19,7 @@ import { EvalsPage } from "./pages/Evals";
 import { ContextPage } from "./pages/Context";
 import { StatsPage } from "./pages/Stats";
 import { UpdatesPage } from "./pages/Updates";
+import { RuntimeUsagePage } from "./pages/RuntimeUsage";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { SetupIncompleteBanner } from "./components/SetupIncompleteBanner";
 
@@ -198,6 +199,14 @@ export default function App() {
         <Route path="/docs-legacy" element={<DocsRedirect />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />
+        <Route
+          path="/runtime-usage"
+          element={
+            <ProtectedRoute>
+              <RuntimeUsagePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/settings"
           element={
