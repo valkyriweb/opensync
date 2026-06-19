@@ -1,6 +1,7 @@
 name: Runtime Usage PR Checks
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "lue/runtime-usage-telemetry"
