@@ -14,6 +14,39 @@ Purpose: make this OpenSync instance the central dashboard for Luke's agent sess
 - Auth fixed locally: WorkOS code exchange is routed through Vite proxy `/user_management -> https://api.workos.com`, and `AuthKitProvider` points at the current local origin via `apiHostname`/`port`/`https`.
 - OpenSync API key generated, rotated after accidental page-text exposure, and saved in 1Password item `OpenSync self-host` as `opensync_api_key`.
 
+## Convex hosting: cloud now → self-host on lue-kube (PLANNED)
+
+**Status: deferred. Keep Convex on the cloud version for now.** The frontend is being
+deployed to lue-kube at `opensync.bermont.digital` (tailnet-only, WorkOS-gated) while
+`VITE_CONVEX_URL` still points at the managed deployment `good-aardvark-553.convex.cloud`.
+Nothing about the cloud backend changes yet.
+
+**Goal:** move the Convex backend itself off Convex Cloud and self-host it on lue-kube, to
+match the "private self-host, not hosted" posture below and own the session data end-to-end.
+
+**Migration checklist (do when ready — verify against https://docs.convex.dev/self-hosting first):**
+
+1. Deploy the self-hosted Convex backend + dashboard to lue-kube (`ghcr.io/get-convex/convex-backend`
+   + `convex-dashboard`), backed by Postgres (cluster PG or a dedicated instance) and a PVC for storage.
+   Generate the instance/admin secret; store via Sealed Secret in the `opensync`/`convex` namespace.
+2. Expose two origins the way Convex Cloud splits them: the API/WebSocket origin (the `.convex.cloud`
+   equivalent, e.g. `convex.opensync.bermont.digital`) and the HTTP-actions/sync origin (the
+   `.convex.site` equivalent the sync plugins POST to). Wire both through ingress-nginx + cert-manager.
+3. Set backend env on the self-hosted deployment: `WORKOS_API_KEY`, `WORKOS_CLIENT_ID`, optional
+   `OPENAI_API_KEY`. Confirm `convex/auth.config.ts` still validates WorkOS JWTs against the WorkOS JWKS.
+4. Push schema + functions: `npx convex deploy` against the self-hosted URL with the admin key.
+5. Migrate data: `npx convex export` from cloud → `npx convex import` into self-hosted. Plan a cutover
+   window; this is the irreversible step — verify row counts and a few sessions before decommissioning.
+6. Rebuild the frontend image with the new `VITE_CONVEX_URL` (+ matching `VITE_REDIRECT_URI`) and redeploy
+   to lue-kube.
+7. Repoint every sync client to the new URL + fresh `osk_` key: `~/.config/pi-opensync-plugin/config.json`
+   (and `pi-opensync-plugin` fork), `codex-sync`, `claude-code-sync`. Regenerate API keys.
+8. Verify ingestion end-to-end, then decommission the `good-aardvark-553` cloud deployment.
+
+**Risks:** Convex self-hosting maturity + Postgres ops, export/import fidelity, sync-client cutover
+(plugins go silent until repointed — the fork's circuit breaker keeps that from blocking turns), and
+WorkOS JWKS reachability from in-cluster.
+
 ## What OpenSync is good for
 
 OpenSync is a session/activity dashboard, not a runtime process monitor. We will use it as:
