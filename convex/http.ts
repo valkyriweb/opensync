@@ -75,6 +75,171 @@ function json(data: any, status = 200) {
   });
 }
 
+const runtimeUsageBatchLimit = 500;
+const sourceSystems = new Set([
+  "pi",
+  "paperclip",
+  "multica",
+  "openclaw",
+  "claude-code",
+  "codex",
+  "clawsweeper",
+  "unknown",
+]);
+const quotaBuckets = new Set(["openai-codex", "anthropic", "google", "unknown"]);
+const freshnessStates = new Set(["fresh", "stale", "unknown"]);
+
+const secretLikePattern =
+  /(Bearer\s+\S+|BEGIN [A-Z ]*PRIVATE KEY|\b(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)\b\s*[:=]|:\/\/[^/\s:@]+:[^/\s@]+@)/i;
+
+function optionalString(value: unknown, field = "string", maxLength = 512) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const text = String(value).trim();
+  if (!text) return undefined;
+  if (text.length > maxLength) throw new Error(`${field} exceeds ${maxLength} characters`);
+  if (secretLikePattern.test(text)) throw new Error(`${field} looks like a secret`);
+  return text;
+}
+
+function requiredString(value: unknown, field: string) {
+  const text = optionalString(value, field);
+  if (!text) throw new Error(`Missing ${field}`);
+  return text;
+}
+
+function allowedValue(value: unknown, allowed: Set<string>, fallback = "unknown") {
+  const text = optionalString(value) ?? fallback;
+  return allowed.has(text) ? text : fallback;
+}
+
+function tokenCount(value: unknown) {
+  if (value === undefined || value === null || value === "") return 0;
+  const count = Number(value);
+  if (!Number.isFinite(count) || count < 0) throw new Error(`Invalid token count: ${value}`);
+  return count;
+}
+
+function optionalNumber(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error(`Invalid number: ${value}`);
+  return number;
+}
+
+function observedAtMs(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  throw new Error(`Invalid observedAt: ${value}`);
+}
+
+function runtimeUsageRecords(body: any) {
+  const records = Array.isArray(body) ? body : Array.isArray(body?.records) ? body.records : [body?.record ?? body];
+  if (records.length === 0) throw new Error("No runtime usage records supplied");
+  if (records.length > runtimeUsageBatchLimit) {
+    throw new Error(`Runtime usage batch exceeds ${runtimeUsageBatchLimit} records`);
+  }
+
+  return records.map((record: any) => {
+    const observedAt = observedAtMs(record.observedAt ?? record.observed_at ?? record.timestamp ?? record.ts);
+    const sourceSystem = allowedValue(record.sourceSystem ?? record.source_system, sourceSystems);
+    const runtimeSurface = requiredString(record.runtimeSurface ?? record.runtime_surface, "runtimeSurface");
+    const providerReported = requiredString(
+      record.providerReported ?? record.provider_reported ?? record.provider,
+      "providerReported",
+    );
+    const modelReported = requiredString(
+      record.modelReported ?? record.model_reported ?? record.model,
+      "modelReported",
+    );
+    const quotaBucket = allowedValue(record.quotaBucket ?? record.quota_bucket, quotaBuckets);
+    const sourceFreshness = allowedValue(
+      record.sourceFreshness ?? record.source_freshness,
+      freshnessStates,
+    );
+    const sourceKey =
+      optionalString(record.sourceKey ?? record.source_key) ??
+      [
+        sourceSystem,
+        runtimeSurface,
+        optionalString(record.runtimeId ?? record.runtime_id),
+        optionalString(record.runId ?? record.run_id),
+        optionalString(record.sessionId ?? record.session_id),
+        optionalString(record.agentId ?? record.agent_id),
+        optionalString(record.agentName ?? record.agent_name),
+        optionalString(record.issueId ?? record.issue_id),
+        optionalString(record.issueKey ?? record.issue_key),
+        optionalString(record.targetRepo ?? record.target_repo),
+        optionalString(record.runnerName ?? record.runner_name),
+        modelReported,
+        quotaBucket,
+        observedAt,
+      ]
+        .filter(Boolean)
+        .join("|");
+
+    return {
+      sourceKey,
+      observedAt,
+      sourceSystem,
+      runtimeSurface,
+      runtimeId: optionalString(record.runtimeId ?? record.runtime_id),
+      runtimeName: optionalString(record.runtimeName ?? record.runtime_name),
+      companyId: optionalString(record.companyId ?? record.company_id),
+      workspaceId: optionalString(record.workspaceId ?? record.workspace_id),
+      projectId: optionalString(record.projectId ?? record.project_id),
+      agentId: optionalString(record.agentId ?? record.agent_id),
+      agentName: optionalString(record.agentName ?? record.agent_name),
+      issueId: optionalString(record.issueId ?? record.issue_id),
+      issueKey: optionalString(record.issueKey ?? record.issue_key),
+      taskKey: optionalString(record.taskKey ?? record.task_key),
+      runId: optionalString(record.runId ?? record.run_id),
+      sessionId: optionalString(record.sessionId ?? record.session_id),
+      cwd: optionalString(record.cwd),
+      workflowName: optionalString(record.workflowName ?? record.workflow_name),
+      targetRepo: optionalString(record.targetRepo ?? record.target_repo),
+      runnerName: optionalString(record.runnerName ?? record.runner_name),
+      providerReported,
+      modelReported,
+      quotaBucket,
+      billingType: optionalString(record.billingType ?? record.billing_type),
+      biller: optionalString(record.biller),
+      inputTokens: tokenCount(record.inputTokens ?? record.input_tokens ?? record.input),
+      cachedInputTokens: tokenCount(
+        record.cachedInputTokens ??
+          record.cacheReadTokens ??
+          record.cached_input_tokens ??
+          record.cache_read_tokens ??
+          record.cacheRead,
+      ),
+      cacheWriteTokens: tokenCount(
+        record.cacheWriteTokens ?? record.cache_write_tokens ?? record.cacheWrite,
+      ),
+      outputTokens: tokenCount(record.outputTokens ?? record.output_tokens ?? record.output),
+      costCents: optionalNumber(record.costCents ?? record.cost_cents),
+      status: optionalString(record.status),
+      sourceFreshness,
+    };
+  });
+}
+
+function parseSince(value: string | null) {
+  if (!value) return undefined;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function queryEnum(value: string | null, allowed: Set<string>, field: string) {
+  const text = optionalString(value, field);
+  if (!text) return undefined;
+  if (!allowed.has(text)) throw new Error(`Invalid ${field}: ${text}`);
+  return text;
+}
+
 // CORS preflight
 http.route({
   path: "/*",
@@ -247,9 +412,98 @@ http.route({
   }),
 });
 
+// Sync normalized runtime token usage
+http.route({
+  path: "/sync/runtime-usage",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const auth = await authenticate(ctx, request);
+    if (auth.error) return json({ error: auth.error }, auth.status);
+
+    try {
+      const body = await request.json();
+      const records = runtimeUsageRecords(body);
+      const result = await ctx.runMutation(internal.runtimeUsage.ingestBatch, {
+        userId: auth.user._id,
+        records,
+      });
+
+      return json({ ok: true, ...result });
+    } catch (e) {
+      return json({ error: String(e) }, 400);
+    }
+  }),
+});
+
 // ============================================================================
 // SECURE API ENDPOINTS (for external apps)
 // ============================================================================
+
+// GET /api/runtime-usage - List or summarize normalized runtime token usage
+http.route({
+  path: "/api/runtime-usage",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const start = Date.now();
+    const auth = await authenticate(ctx, request);
+    if (auth.error) return json({ error: auth.error }, auth.status);
+
+    try {
+      const url = new URL(request.url);
+      const since = parseSince(url.searchParams.get("since"));
+      const summary = url.searchParams.get("summary") === "true";
+      const freshness = url.searchParams.get("freshness") === "true";
+      const limit = parseInt(url.searchParams.get("limit") || (summary ? "5000" : "100"));
+      const staleAfterMinutes = parseInt(url.searchParams.get("staleAfterMinutes") || "360");
+      if (!Number.isFinite(limit)) throw new Error("Invalid limit");
+      if (!Number.isFinite(staleAfterMinutes)) throw new Error("Invalid staleAfterMinutes");
+
+      const result = freshness
+        ? await ctx.runQuery(internal.runtimeUsage.freshnessForUser, {
+            userId: auth.user._id,
+            expectedSurfaces: url.searchParams
+              .getAll("expectedSurface")
+              .map((surface) => optionalString(surface, "expectedSurface"))
+              .filter(Boolean) as string[],
+            staleAfterMinutes,
+          })
+        : summary
+          ? await ctx.runQuery(internal.runtimeUsage.summarizeForUser, {
+              userId: auth.user._id,
+              since,
+              limit,
+            })
+          : await ctx.runQuery(internal.runtimeUsage.listForUser, {
+              userId: auth.user._id,
+              since,
+              limit,
+              sourceSystem: queryEnum(
+                url.searchParams.get("sourceSystem"),
+                sourceSystems,
+                "sourceSystem",
+              ) as any,
+              quotaBucket: queryEnum(
+                url.searchParams.get("quotaBucket"),
+                quotaBuckets,
+                "quotaBucket",
+              ) as any,
+              runtimeSurface: optionalString(url.searchParams.get("runtimeSurface"), "runtimeSurface"),
+            });
+
+      await ctx.runMutation(internal.api.logAccess, {
+        userId: auth.user._id,
+        endpoint: "/api/runtime-usage",
+        method: "GET",
+        statusCode: 200,
+        responseTimeMs: Date.now() - start,
+      });
+
+      return json(result);
+    } catch (e) {
+      return json({ error: String(e) }, 400);
+    }
+  }),
+});
 
 // GET /api/sessions - List sessions
 http.route({

@@ -16,6 +16,7 @@ import type * as evals from "../evals.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as rag from "../rag.js";
+import type * as runtimeUsage from "../runtimeUsage.js";
 import type * as search from "../search.js";
 import type * as sessions from "../sessions.js";
 import type * as users from "../users.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   messages: typeof messages;
   rag: typeof rag;
+  runtimeUsage: typeof runtimeUsage;
   search: typeof search;
   sessions: typeof sessions;
   users: typeof users;

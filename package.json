@@ -11,6 +11,10 @@
     "convex:deploy": "convex deploy",
     "sync:docs": "npx tsx scripts/sync-docs.ts",
     "sync:docs:prod": "SYNC_ENV=production npx tsx scripts/sync-docs.ts",
+    "sync:runtime-usage": "npx tsx scripts/sync-runtime-usage.ts",
+    "sync:runtime-usage:batch": "npx tsx scripts/sync-runtime-usage-batch.ts",
+    "check:runtime-usage:freshness": "npx tsx scripts/check-runtime-usage-freshness.ts",
+    "test:runtime-usage": "npx tsx scripts/test-runtime-usage.ts",
     "build:search-index": "npx tsx scripts/build-search-index.ts"
   },
   "dependencies": {
