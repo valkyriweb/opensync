@@ -1,0 +1,53 @@
+name: Runtime Usage PR Checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "lue/runtime-usage-telemetry"
+    paths:
+      - ".github/workflows/runtime-usage-*.yml"
+      - "convex/**"
+      - "scripts/*runtime-usage*.ts"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "README.md"
+  pull_request:
+    paths:
+      - ".github/workflows/runtime-usage-*.yml"
+      - "convex/**"
+      - "scripts/*runtime-usage*.ts"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "README.md"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-usage:
+    name: Runtime usage checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Runtime usage regression tests
+        run: npm run --silent test:runtime-usage
+
+      - name: Typecheck runtime usage scripts
+        run: npx tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 --types node scripts/sync-runtime-usage.ts scripts/sync-runtime-usage-batch.ts scripts/check-runtime-usage-freshness.ts scripts/test-runtime-usage.ts
+
+      - name: Build
+        run: npm run build
