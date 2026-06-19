@@ -30,7 +30,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: valkyriweb/opensync
   # Non-secret, inlined into the static bundle by Vite at build time.
-  VITE_CONVEX_URL: https://good-aardvark-553.convex.cloud
+  VITE_CONVEX_URL: https://opensync-convex.myhorizon.co.za
   VITE_WORKOS_CLIENT_ID: client_01KVAZPMSWJ282FFAQ9GDWX38P
   VITE_REDIRECT_URI: https://opensync.bermont.digital/callback
 
