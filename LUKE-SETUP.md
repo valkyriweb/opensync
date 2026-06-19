@@ -119,9 +119,13 @@ Open: `http://localhost:5173`
 
 API key is already generated and saved in 1Password item `OpenSync self-host`. Plugins use this key.
 
-## Always-on (launchd)
+## Always-on — now on lue-kube (launchd retired 2026-06-19)
 
-The dashboard frontend runs as a launch agent, so `http://localhost:5173` is always up (starts at login, restarts on crash).
+The dashboard now runs on the lue-kube cluster at `https://opensync.bermont.digital`
+(tailnet-only, WorkOS-gated, TLS via cert-manager). The old local launchd agent
+(`com.luke.opensync-dashboard`, `vite` on `localhost:5173`) was **retired** — booted
+out and its plist + launcher deleted (plist backed up to `/tmp`) — since the cluster
+build serves the same cloud Convex backend. Historical local-agent details below.
 
 - Agent label: `com.luke.opensync-dashboard`
 - Plist: `~/Library/LaunchAgents/com.luke.opensync-dashboard.plist`
