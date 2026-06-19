@@ -14,17 +14,29 @@ Purpose: make this OpenSync instance the central dashboard for Luke's agent sess
 - Auth fixed locally: WorkOS code exchange is routed through Vite proxy `/user_management -> https://api.workos.com`, and `AuthKitProvider` points at the current local origin via `apiHostname`/`port`/`https`.
 - OpenSync API key generated, rotated after accidental page-text exposure, and saved in 1Password item `OpenSync self-host` as `opensync_api_key`.
 
-## Convex hosting: cloud now → self-host on lue-kube (PLANNED)
+## Convex hosting: SELF-HOSTED on lue-kube (DONE 2026-06-19)
 
-**Status: deferred. Keep Convex on the cloud version for now.** The frontend is being
-deployed to lue-kube at `opensync.bermont.digital` (tailnet-only, WorkOS-gated) while
-`VITE_CONVEX_URL` still points at the managed deployment `good-aardvark-553.convex.cloud`.
-Nothing about the cloud backend changes yet.
+**Status: migrated.** Convex Cloud (`good-aardvark-553`) hit its **free-plan limit and
+disabled the whole deployment** (every sync started returning `500: exceeded the free plan
+limits`). Forced the cutover to self-hosted on lue-kube. The cloud deployment is dead —
+data started fresh (can't `convex export` from a disabled deployment).
 
-**Goal:** move the Convex backend itself off Convex Cloud and self-host it on lue-kube, to
-match the "private self-host, not hosted" posture below and own the session data end-to-end.
+Live self-hosted backend (`k3s/apps/opensync-convex/` in lue-kube, PR #338):
+- API origin `https://opensync-convex.myhorizon.co.za`, **site origin (HTTP actions / sync
+  POST target) `https://opensync-convex-site.myhorizon.co.za`**, god-mode dashboard
+  `https://opensync-convex-dashboard.myhorizon.co.za` (tailnet-only).
+- Public data plane (so pods/runners sync from anywhere); auth = WorkOS JWT (browser) +
+  `osk_` keys (sync clients). DNS = 3 Cloudflare A records → `154.65.97.106` (DNS-only).
+- Frontend repointed via `VITE_CONVEX_URL` rebuild (PR #348). MacBook clients + multica
+  pod sidecar (PR #349, `source=codex:multica`) repointed to the site origin.
 
-**Migration checklist (do when ready — verify against https://docs.convex.dev/self-hosting first):**
+**⚠️ Client wiring gotcha:** sync clients derive the POST URL by `convexUrl.replace(
+'.convex.cloud','.convex.site')` — a no-op on a custom domain. So set each client's
+`convexUrl` to the **site origin directly** (`opensync-convex-site.myhorizon.co.za`), and
+edit `~/.config/<tool>/config.json` by hand (claude-code-sync's `login` rejects non-`convex.*`
+URLs).
+
+**Migration checklist (DONE — kept for reference; verify against https://docs.convex.dev/self-hosting):**
 
 1. Deploy the self-hosted Convex backend + dashboard to lue-kube (`ghcr.io/get-convex/convex-backend`
    + `convex-dashboard`), backed by Postgres (cluster PG or a dedicated instance) and a PVC for storage.
